@@ -5,6 +5,7 @@ import re
 import requests
 # from src.prompt import prompt_template
 # from src.llm_router import LLMRouter
+
 class LLMRouter:
 
     SUPPORTED_PERPLEXITY_MODELS = [
@@ -204,25 +205,32 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "super-secret-key"
-# api/index.py
 
-def handler(request):
-    return {
-        "statusCode": 200,
-        "body": "Hello from Vercel!",
-    }
 
 
 # === Helper: Get LLM Router ===
+# === Helper: Get LLM Router ===
 def get_router():
-    model_name = session.get("llm_name", "local_llama")
-    api_key = session.get("api_key")
+    # Get API key from request first, then session
+    api_key = (
+        request.form.get("api_key")
+        or (request.json.get("api_key") if request.is_json else None)
+        or session.get("api_key")
+    )
+
+    # Default provider = openai
+    model_name = (
+        request.form.get("model")
+        or (request.json.get("model") if request.is_json else None)
+        or session.get("llm_name")
+        or "openai"
+    )
 
     if model_name == "openai":
         return LLMRouter({
             "provider": "openai",
             "api_key": api_key,
-            "model": "gpt-4o-mini"
+            "model": "gpt-4o-mini"   # ✅ default OpenAI model
         })
 
     elif model_name == "perplexity":
@@ -238,13 +246,15 @@ def get_router():
             "api_key": api_key,
             "model": "deepseek-chat"
         })
+
     elif model_name == "aimlapi":
         return LLMRouter({
-        "provider": "aimlapi",
-        "api_key": api_key,
-        "model": "gpt-4o"
-    })
+            "provider": "aimlapi",
+            "api_key": api_key,
+            "model": "gpt-4o"
+        })
 
+    # fallback to local_llama if nothing else matches
     return LLMRouter({
         "provider": "local_llama",
         "model_path": "/Users/wft08/Desktop/CHATBOTAI 2/medibot/research/model/llama-2-7b-chat.ggmlv3.q4_0.bin",
@@ -256,6 +266,7 @@ def get_router():
             "context_length": 2048
         }
     })
+
 
 # === Routes ===
 @app.route("/")
