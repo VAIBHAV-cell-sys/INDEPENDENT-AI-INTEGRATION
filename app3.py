@@ -214,9 +214,11 @@ def handler(request):
 
 
 # === Helper: Get LLM Router ===
+# === Helper: Get LLM Router ===
 def get_router():
-    model_name = session.get("llm_name", "local_llama")
-    api_key = session.get("api_key")
+    # Priority: request -> session
+    api_key = request.form.get("api_key") or (request.json.get("api_key") if request.is_json else None) or session.get("api_key")
+    model_name = request.form.get("model") or (request.json.get("model") if request.is_json else None) or session.get("llm_name", "openai")
 
     if model_name == "openai":
         return LLMRouter({
@@ -240,10 +242,10 @@ def get_router():
         })
     elif model_name == "aimlapi":
         return LLMRouter({
-        "provider": "aimlapi",
-        "api_key": api_key,
-        "model": "gpt-4o"
-    })
+            "provider": "aimlapi",
+            "api_key": api_key,
+            "model": "gpt-4o"
+        })
 
     return LLMRouter({
         "provider": "local_llama",
@@ -256,6 +258,7 @@ def get_router():
             "context_length": 2048
         }
     })
+
 
 # === Routes ===
 @app.route("/")
