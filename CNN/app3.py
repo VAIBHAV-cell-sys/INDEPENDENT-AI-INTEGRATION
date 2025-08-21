@@ -204,6 +204,14 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "super-secret-key"
+# api/index.py
+
+def handler(request):
+    return {
+        "statusCode": 200,
+        "body": "Hello from Vercel!",
+    }
+
 
 # === Helper: Get LLM Router ===
 def get_router():
