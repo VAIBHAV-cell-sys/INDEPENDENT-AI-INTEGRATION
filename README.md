@@ -1,6 +1,4 @@
-Sure! Below is a sample README documentation that explains the purpose and setup of your Flask application with LLM integration.
 
----
 
 # Flask LLM Chatbot
 
@@ -215,6 +213,4 @@ This project allows you to interact with multiple LLMs and utilize them for diff
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
 
-Let me know if you need further customizations or have additional details you'd like to include!
