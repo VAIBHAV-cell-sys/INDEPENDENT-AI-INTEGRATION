@@ -29,7 +29,7 @@ To run this project, you need the following dependencies installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/your-repo-name.git
+git clone (paste link here)
 cd your-repo-name
 ```
 
