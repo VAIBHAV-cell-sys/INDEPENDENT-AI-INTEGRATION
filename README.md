@@ -1,6 +1,6 @@
 
 
-# Flask LLM Chatbot
+# Flask LLM Chatbot (find this at https://independent-ai-integration-7.onrender.com)
 
 This repository contains a Flask application designed to integrate with various Large Language Models (LLMs) via different providers, such as OpenAI, Perplexity, DeepSeek, and AIML API, among others. The app allows users to interact with these models through a web interface to generate responses to their inputs, create action plans, and identify potential challenges for specific goals.
 
