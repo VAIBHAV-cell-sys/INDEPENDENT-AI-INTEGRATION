@@ -3,9 +3,9 @@ from dotenv import load_dotenv
 import os
 import re
 import requests
-# from src.prompt import prompt_template
+# from src.prompt import prompt_template //no need now... as i had removed the dependencies!!!
 # from src.llm_router import LLMRouter
-class LLMRouter:
+class LLMRouter:  #this is made to dynamically shift the user selected llm  
 
     SUPPORTED_PERPLEXITY_MODELS = [
         "sonar-small-online",
@@ -166,6 +166,7 @@ class LLMRouter:
             return data['choices'][0]['message']['content'].strip()
         except Exception as e:
             return f"[DeepSeek Error] {str(e)}"
+        
     def _call_aimlapi(self, prompt_or_messages): 
         try:
             api_key = self.config.get("api_key")
@@ -174,7 +175,14 @@ class LLMRouter:
             if isinstance(prompt_or_messages, str):
                 messages = [{"role": "user", "content": prompt_or_messages}]
             elif isinstance(prompt_or_messages, list):
-                messages = prompt_or_messages
+                valid_roles = {"user", "assistant"}
+                messages = []
+                for msg in prompt_or_messages:
+                    role = msg.get("role")
+                    content = msg.get("content")
+                    if role not in valid_roles:
+                        role = "user"  # fallback, since AIML only accepts user/assistant
+                    messages.append({"role": role, "content": content})
             else:
                 return "[Invalid input format for AIML API]"
 
@@ -199,6 +207,8 @@ class LLMRouter:
             return data['choices'][0]['message']['content'].strip()
         except Exception as e:
             return f"[AIML API Error] {str(e)}"
+
+
         
 load_dotenv()
 
@@ -244,7 +254,7 @@ def get_router():
         return LLMRouter({
             "provider": "aimlapi",
             "api_key": api_key,
-            "model": "gpt-4o"
+            "model": "google/gemma-3n-e4b-it"
         })
 
     return LLMRouter({
