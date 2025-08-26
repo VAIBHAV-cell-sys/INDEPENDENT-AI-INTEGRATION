@@ -34,86 +34,145 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2 class="mb-4">🧠 Challenge Navigator</h2>
+<div class="container">
+  <h2 class="mb-4">🧠 Challenge Navigator</h2>
 
-    <!-- Model Setup -->
-    <div class="form-group">
-      <label for="llmSelector">Select LLM Provider</label>
-      <select id="llmSelector" class="form-control">
-        <option value="local_llama">Local LLaMA</option>
-        <option value="openai">OpenAI</option>
-        <option value="perplexity">Perplexity AI</option>
-        <option value="deepseek">DeepSeek AI</option>
-        <option value="aimlapi">AIMLAPI</option> <!-- ✅ FIXED: was 'deepseek' before -->
-      </select>
-    </div>
+  <!-- Model Setup -->
+  <div class="form-group">
+    <label for="llmSelector">Select LLM Provider</label>
+    <select id="llmSelector" class="form-control">
+      <option value="local_llama">Local LLaMA</option>
+      <option value="openai">OpenAI</option>
+      <option value="perplexity">Perplexity AI</option>
+      <option value="deepseek">DeepSeek AI</option>
+      <option value="aimlapi">AIMLAPI</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="apiKey">API Key (if needed)</label>
+    <input type="password" class="form-control" id="apiKey" placeholder="Enter API key if required">
+  </div>
+  <button id="setModelBtn" class="btn btn-secondary mb-4">Set Model</button>
 
-    <div class="form-group">
-      <label for="apiKey">API Key (if needed)</label>
-      <input type="password" class="form-control" id="apiKey" placeholder="Enter API key if required">
-    </div>
+  <!-- Goal Input -->
+  <div class="form-group">
+    <label for="goalInput">🎯 What’s your goal?</label>
+    <input type="text" class="form-control" id="goalInput" placeholder="e.g., Start a YouTube Channel">
+  </div>
+  <button id="generateChallengesBtn" class="btn btn-primary mb-3">Generate Challenges</button>
 
-    <button class="btn btn-secondary mb-4" onclick="setModel()">Set Model</button>
-
-    <!-- Goal Input -->
-    <div class="form-group">
-      <label for="goalInput">🎯 What’s your goal?</label>
-      <input type="text" class="form-control" id="goalInput" placeholder="e.g., Start a YouTube Channel">
-    </div>
-    <button class="btn btn-primary mb-3" onclick="generateChallenges()">Generate Challenges</button>
-
-    <!-- Challenges -->
-    <div id="challengeSection" style="display:none;">
-      <h5>🛠️ Select up to 5 challenges:</h5>
-      <div id="challengeList" class="mb-3"></div>
-      <button class="btn btn-success" onclick="generatePlan()">Generate Action Plan</button>
-    </div>
-
-    <!-- Plan Output -->
-    <div id="responseBox" style="display:none;" class="mt-4"></div>
+  <!-- Challenges -->
+  <div id="challengeSection" style="display:none;">
+    <h5>🛠️ Select up to 5 challenges:</h5>
+    <div id="challengeList" class="mb-3"></div>
+    <button id="generatePlanBtn" class="btn btn-success">Generate Action Plan</button>
   </div>
 
-  <script>
-    async function setModel() {
-      const llm = document.getElementById("llmSelector").value;
-      const apiKey = document.getElementById("apiKey").value;
+  <!-- Plan Output -->
+  <div id="responseBox" style="display:none;" class="mt-4"></div>
+</div>
 
-      await fetch("/set_model", {
-        method: "POST",
-        body: new URLSearchParams({ model: llm, api_key: apiKey }),
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }
-      });
+<script type="module">
+import { saveChallenges, loadChallenges, savePlan, loadPlan } from "/static/indexed.js";
 
-      alert("✅ Model set successfully!");
-    }
+// Limit checkboxes to 5
+function limitCheckboxes() {
+  const checked = document.querySelectorAll("#challengeList input:checked");
+  if (checked.length > 5) {
+    this.checked = false;
+    alert("⚠️ Please select up to 5 challenges only.");
+  }
+}
 
-    async function generateChallenges() {
-      const goal = document.getElementById("goalInput").value.trim();
+// Set Model
+async function setModel() {
+  const llm = document.getElementById("llmSelector").value;
+  const apiKey = document.getElementById("apiKey").value;
+
+  await fetch("/set_model", {
+    method: "POST",
+    body: new URLSearchParams({ model: llm, api_key: apiKey }),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" }
+  });
+  alert("✅ Model set successfully!");
+}
+
+// Generate Challenges
+async function generateChallenges() {
+  const goal = document.getElementById("goalInput").value.trim();
+  if (!goal) return alert("❗ Please enter a goal.");
+
+  const res = await fetch("/generate_challenges", {
+    method: "POST",
+    body: new URLSearchParams({ goal }),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" }
+  });
+  const data = await res.json();
+  const challenges = data.challenges || [];
+  if (!challenges.length) return alert("No challenges found.");
+
+  saveChallenges(challenges);
+
+  const challengeList = document.getElementById("challengeList");
+  challengeList.innerHTML = "";
+  challenges.forEach((challenge, i) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "form-check challenge-item";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "form-check-input";
+    checkbox.id = `ch${i}`;
+    checkbox.value = challenge;
+    checkbox.addEventListener("change", limitCheckboxes);
+
+    const label = document.createElement("label");
+    label.className = "form-check-label";
+    label.setAttribute("for", `ch${i}`);
+    label.innerText = challenge;
+
+    wrapper.appendChild(checkbox);
+    wrapper.appendChild(label);
+    challengeList.appendChild(wrapper);
+  });
+  document.getElementById("challengeSection").style.display = "block";
+}
+
+// Generate Plan
+async function generatePlan() {
+  const selected = Array.from(document.querySelectorAll("#challengeList input:checked"))
+    .map(cb => cb.value.trim());
+  if (!selected.length) return alert("⚠️ Select at least one challenge.");
+
+  const formBody = new URLSearchParams();
+  selected.forEach(ch => formBody.append("challenges[]", ch));
+
+  const res = await fetch("/generate_plan", {
+    method: "POST",
+    body: formBody,
+    headers: { "Content-Type": "application/x-www-form-urlencoded" }
+  });
+  const data = await res.json();
+  const plan = data.plan || "❌ No plan received.";
+  const responseBox = document.getElementById("responseBox");
+  responseBox.style.display = "block";
+  responseBox.innerText = plan;
+
+  savePlan(plan);
+}
+
+// Attach event listeners
+document.getElementById("setModelBtn").addEventListener("click", setModel);
+document.getElementById("generateChallengesBtn").addEventListener("click", generateChallenges);
+document.getElementById("generatePlanBtn").addEventListener("click", generatePlan);
+
+// Load previous data from IndexedDB
+window.addEventListener("DOMContentLoaded", () => {
+  loadChallenges(challenges => {
+    if (challenges.length) {
       const challengeList = document.getElementById("challengeList");
-      const responseBox = document.getElementById("responseBox");
-
-      if (!goal) return alert("❗ Please enter a goal.");
-
-      responseBox.style.display = "block";
-      responseBox.innerText = "Generating challenges... ⏳";
-
-      const res = await fetch("/generate_challenges", {
-        method: "POST",
-        body: new URLSearchParams({ goal }),
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }
-      });
-
-      const data = await res.json();
-      const challenges = data.challenges || [];
-
-      if (!challenges.length) {
-        responseBox.innerText = " No challenges found. Try rephrasing your goal.";
-        return;
-      }
-
       challengeList.innerHTML = "";
-      challenges.forEach((challenge, i) => {
+      challenges.forEach((ch, i) => {
         const wrapper = document.createElement("div");
         wrapper.className = "form-check challenge-item";
 
@@ -121,56 +180,30 @@
         checkbox.type = "checkbox";
         checkbox.className = "form-check-input";
         checkbox.id = `ch${i}`;
-        checkbox.value = challenge;
+        checkbox.value = ch;
         checkbox.addEventListener("change", limitCheckboxes);
 
         const label = document.createElement("label");
         label.className = "form-check-label";
         label.setAttribute("for", `ch${i}`);
-        label.innerText = challenge;
+        label.innerText = ch;
 
         wrapper.appendChild(checkbox);
         wrapper.appendChild(label);
         challengeList.appendChild(wrapper);
       });
-
       document.getElementById("challengeSection").style.display = "block";
-      responseBox.style.display = "none";
     }
+  });
 
-    function limitCheckboxes() {
-      const checked = document.querySelectorAll("#challengeList input:checked");
-      if (checked.length > 5) {
-        this.checked = false;
-        alert("⚠️ Please select up to 5 challenges only.");
-      }
-    }
-
-    async function generatePlan() {
-      const selected = Array.from(document.querySelectorAll("#challengeList input:checked"))
-        .map(cb => cb.value.trim());
-
-      if (selected.length === 0) {
-        alert("⚠️ Select at least one challenge.");
-        return;
-      }
-
+  loadPlan(plan => {
+    if (plan) {
       const responseBox = document.getElementById("responseBox");
       responseBox.style.display = "block";
-      responseBox.innerText = "Generating action plan... ⏳";
-
-      const formBody = new URLSearchParams();
-      selected.forEach(ch => formBody.append("challenges[]", ch));
-
-      const res = await fetch("/generate_plan", {
-        method: "POST",
-        body: formBody,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }
-      });
-
-      const data = await res.json();
-      responseBox.innerText = data.plan || "❌ No plan received.";
+      responseBox.innerText = plan;
     }
-  </script>
+  });
+});
+</script>
 </body>
 </html>
